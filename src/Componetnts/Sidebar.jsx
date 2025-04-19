@@ -28,7 +28,7 @@ const Sidebar = () => {
     <div className="h-screen w-64 bg-white shadow-lg p-4 flex flex-col gap-2">
       {/* Logo Image */}
       <img
-        src='../src/Images/sunset.jpg'
+        src='	https://front-end-drab-pi.vercel.app/assets/sunset-Cul1cxVA.jpg'
         alt="Cafe Logo"
         className="w-16 h-16 object-cover rounded-full mb-2 img-fluid"
       />

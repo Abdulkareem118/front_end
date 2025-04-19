@@ -154,7 +154,7 @@ const MenuPage = () => {
         </head>
         <body>
           <div class="receipt">
-            <img src="../src/Images/sunset.jpg" alt="Logo" class="logo" />
+            <img src="	https://front-end-drab-pi.vercel.app/assets/sunset-Cul1cxVA.jpg" alt="Logo" class="logo" />
           
 <Text
   type="secondary"
