@@ -7,7 +7,7 @@ import Sidebar from '../Componetnts/Sidebar';
 const { Option } = Select;
 
 const ItemsPage = () => {
-  const [formData, setFormData] = useState({ name: '', category: '', price: '' });
+  const [formData, setFormData] = useState({ name: '', category: '', price: '', stock: '' });
   const [items, setItems] = useState([]);
   const [editingItemId, setEditingItemId] = useState(null);
 
@@ -20,7 +20,7 @@ const ItemsPage = () => {
 
   const fetchItems = async () => {
     try {
-      const res = await axios.get('https://pos-2-wv56.onrender.com/api/menu');
+      const res = await axios.get('http://localhost:8080/api/menu');
       setItems(res.data);
     } catch (error) {
       console.error(error);
@@ -34,31 +34,33 @@ const ItemsPage = () => {
 
   const handleSubmit = async () => {
     try {
-      if (!formData.name || !formData.category || !formData.price) {
+      if (!formData.name || !formData.category || !formData.price || !formData.stock) {
         toast.error('Please fill all fields');
         return;
       }
 
       if (editingItemId) {
         // Update existing item
-        await axios.put(`https://pos-2-wv56.onrender.com/api/menu/${editingItemId}`, {
+        await axios.put(`http://localhost:8080/api/menu/${editingItemId}`, {
           name: formData.name,
           category: formData.category,
           price: parseFloat(formData.price),
+          stock: parseInt(formData.stock),
         });
         toast.success('Item updated successfully!');
         setEditingItemId(null);
       } else {
         // Add new item
-        await axios.post('https://pos-2-wv56.onrender.com/api/menu', {
+        await axios.post('http://localhost:8080/api/menu', {
           name: formData.name,
           category: formData.category,
           price: parseFloat(formData.price),
+          stock: parseInt(formData.stock),
         });
         toast.success('Item added successfully!');
       }
 
-      setFormData({ name: '', category: '', price: '' });
+      setFormData({ name: '', category: '', price: '', stock: '' });
       fetchItems();
     } catch (error) {
       console.error(error);
@@ -71,13 +73,14 @@ const ItemsPage = () => {
       name: item.name,
       category: item.category,
       price: item.price,
+      stock: item.stock,
     });
     setEditingItemId(item._id);
   };
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`https://pos-2-wv56.onrender.com/api/menu/${id}`);
+      await axios.delete(`http://localhost:8080/api/menu/${id}`);
       toast.success('Item deleted');
       fetchItems();
     } catch (error) {
@@ -90,6 +93,7 @@ const ItemsPage = () => {
     { title: 'Name', dataIndex: 'name', key: 'name' },
     { title: 'Category', dataIndex: 'category', key: 'category' },
     { title: 'Price (Rs)', dataIndex: 'price', key: 'price' },
+    // { title: 'Stock', dataIndex: 'stock', key: 'stock' },
     {
       title: 'Actions',
       key: 'actions',
@@ -112,7 +116,7 @@ const ItemsPage = () => {
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <Toaster />
-      <Sidebar/>
+      <Sidebar />
       <h2 className="text-2xl font-bold mb-4">
         {editingItemId ? 'Update Item' : 'Add New Menu Item'}
       </h2>
@@ -132,16 +136,23 @@ const ItemsPage = () => {
             onChange={(value) => handleChange(value, 'category')}
             placeholder="Select category"
           >
-            <Option value="rice">Rice</Option>
-            <Option value="tea">Tea</Option>
-            <Option value="snacks">Snacks</Option>
-            <Option value="drinks">Drinks</Option>
+            <Option value="Sweet Bars">Sweet Bar</Option>
+            <Option value="salad">Salad</Option>
+            <Option value="Hot Bars">Hot Bar</Option>
+            <Option value="Chicken Handi"> Chicken Handi</Option>
+            <Option value="Pakistani Chicken">Pakistani Chicken</Option>
+            <Option value="Chines">Chines</Option>
+            <Option value="Mutton Handi">Mutton Handi</Option>
+            <Option value="special Mutton">Special Mutton</Option>
+            <Option value="Soup">Soup</Option>
+            <Option value="Chines Rice">Chines Rice</Option>
             <Option value="BBQ">BBQ</Option>
-            <Option value="soup">Soup</Option>
-            <Option value="sweetBar">Sweets</Option>
-            <Option value="chowmein">Chowmein</Option>
-            <Option value="hotBar">Hot Drinks</Option>
-            <Option value="handi">Handi</Option>
+            <Option value="Cold Bars">Cold Bars</Option>
+            <Option value="Appetizer">Appetizer</Option>
+            <Option value="Special Nan">Special Nan</Option>
+            <Option value="Fish">Fish</Option>
+            <Option value="Chow Mein">Chow Mein</Option>
+            <Option value="Special Order">Special Order</Option>
           </Select>
         </Form.Item>
 
@@ -151,6 +162,15 @@ const ItemsPage = () => {
             value={formData.price}
             onChange={(e) => handleChange(e.target.value, 'price')}
             placeholder="e.g., 250"
+          />
+        </Form.Item>
+
+        <Form.Item label="Stock (Quantity)">
+          <Input
+            type="number"
+            value={formData.stock}
+            onChange={(e) => handleChange(e.target.value, 'stock')}
+            placeholder="e.g., 50"
           />
         </Form.Item>
 
@@ -164,7 +184,7 @@ const ItemsPage = () => {
         dataSource={items}
         columns={columns}
         rowKey="_id"
-        pagination={{ pageSize: 5 }}
+        pagination={{ pageSize: 10 }}
       />
     </div>
   );

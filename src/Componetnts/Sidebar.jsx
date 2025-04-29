@@ -7,6 +7,7 @@ import {
   ShoppingCartOutlined,
   HistoryOutlined,
   LogoutOutlined,
+  AppstoreOutlined,
 } from '@ant-design/icons';
 
 const Sidebar = () => {
@@ -22,6 +23,8 @@ const Sidebar = () => {
     { name: 'Bills', path: '/Bills', icon: <FileTextOutlined /> },
     { name: 'Add Items', path: '/Items', icon: <ShoppingCartOutlined /> },
     { name: 'History', path: '/History', icon: <HistoryOutlined /> },
+    { name: 'Orders', path: '/orders', icon: <ShoppingCartOutlined /> },
+  { name: 'Inventory', path: '/inventory', icon: <AppstoreOutlined /> },
   ];
 
   return (

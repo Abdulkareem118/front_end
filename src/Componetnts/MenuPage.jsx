@@ -1,12 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
-import { Tabs, Card, Button } from "antd";
-import {
-  PlusOutlined,
-  MinusOutlined,
-  PrinterOutlined,
-  HistoryOutlined,
-} from "@ant-design/icons";
+import { Tabs, Card, Button, Input, message } from "antd";
+import { PlusOutlined, MinusOutlined, PrinterOutlined, HistoryOutlined } from "@ant-design/icons";
 import toast, { Toaster } from "react-hot-toast";
 
 const { TabPane } = Tabs;
@@ -16,11 +11,14 @@ const MenuPage = () => {
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [tableNumber, setTableNumber] = useState("");
+  const [cashReceived, setCashReceived] = useState("");
+  const [change, setChange] = useState(0);
   const printRef = useRef();
 
   useEffect(() => {
     axios
-      .get("https://pos-2-wv56.onrender.com/api/menu/")
+      .get("http://localhost:8080/api/menu/")
       .then((res) => {
         const categorized = res.data.reduce((acc, item) => {
           if (!acc[item.category]) acc[item.category] = [];
@@ -50,15 +48,15 @@ const MenuPage = () => {
     toast.success(`${item.name} added to cart!`);
   };
 
-  // History
   const handleAddToHistory = async () => {
     try {
       const total = getTotal();
-      await axios.post("https://pos-2-wv56.onrender.com/api/history", {
+      await axios.post("http://localhost:8080/api/history", {
         items: cart,
         total,
+        tableNumber,
       });
-      toast.success("History saved!");
+      toast.success("Order placed and history saved!");
       setCart([]);
     } catch (error) {
       toast.error("Failed to save history");
@@ -92,16 +90,14 @@ const MenuPage = () => {
     const itemsHTML = cart
       .map(
         (item) => `
-      <tr>
-        <td>${item.name}</td>
-        <td style="text-align: right;">Rs${(item.price * item.quantity).toFixed(
-          2
-        )}</td>
-      </tr>
-    `
+          <tr>
+            <td>${item.name} (x${item.quantity})</td>
+            <td style="text-align: right;">Rs${(item.price * item.quantity).toFixed(2)}</td>
+          </tr>
+        `
       )
       .join("");
-
+  
     win.document.write(`
       <html>
         <head>
@@ -154,27 +150,27 @@ const MenuPage = () => {
         </head>
         <body>
           <div class="receipt">
-            <img src="	https://front-end-drab-pi.vercel.app/assets/sunset-Cul1cxVA.jpg" alt="Logo" class="logo" />
-          
-<Text
-  type="secondary"
-  className="block mb-6 text-lg"
-  style={{
-    fontFamily: "'Great Vibes', cursive",
-    fontSize: '28px',
-    color: '#333',
-  }}
->
-  The Sunset Café
-</Text>
+            <img src="https://front-end-drab-pi.vercel.app/assets/sunset-Cul1cxVA.jpg" alt="Logo" class="logo" />
+            <div style="font-family: 'Great Vibes', cursive; font-size: 28px; color: #333; margin-bottom: 10px;">
+              The Sunset Café
+            </div>
             <hr />
             <h2>RECEIPT</h2>
             <hr />
+            <p>Table: ${tableNumber}</p> <!-- Added Table Number -->
             <table>
               ${itemsHTML}
               <tr class="total">
                 <td>Total Amount</td>
                 <td style="text-align: right;">Rs${getTotal().toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td>Received Cash</td>
+                <td style="text-align: right;">Rs${parseFloat(cashReceived).toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td>Change</td>
+                <td style="text-align: right;">Rs${change.toFixed(2)}</td>
               </tr>
             </table>
             <div class="footer">
@@ -187,7 +183,6 @@ const MenuPage = () => {
     win.document.close();
     win.print();
   };
-
   const renderItems = (category) => (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
       {menuItems[category]?.map((item) => (
@@ -204,6 +199,17 @@ const MenuPage = () => {
       ))}
     </div>
   );
+
+  const handleCashReceivedChange = (e) => {
+    const cash = e.target.value;
+    setCashReceived(cash);
+    const total = getTotal();
+    if (cash && !isNaN(cash)) {
+      setChange(cash - total);
+    } else {
+      setChange(0);
+    }
+  };
 
   return (
     <div className="flex flex-col md:flex-row p-6 gap-6">
@@ -229,61 +235,83 @@ const MenuPage = () => {
       </div>
 
       <div className="md:w-1/3 bg-white p-4 rounded-xl shadow-md h-fit">
-        <div ref={printRef}>
-          <h3 className="text-xl font-semibold mb-3">Cart Summary</h3>
-          {cart.length === 0 ? (
-            <p>No items added yet.</p>
-          ) : (
-            <ul className="space-y-2">
-              {cart.map((item) => (
-                <li
-                  key={item._id}
-                  className="flex justify-between items-center"
-                >
-                  <span>{item.name}</span>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="small"
-                      icon={<MinusOutlined />}
-                      onClick={() => handleDecrease(item._id)}
-                    />
-                    <span>{item.quantity}</span>
-                    <Button
-                      size="small"
-                      icon={<PlusOutlined />}
-                      onClick={() => handleIncrease(item._id)}
-                    />
-                  </div>
-                  <span>Rs. {item.price * item.quantity}</span>
-                </li>
-              ))}
-              <hr className="my-2" />
-              <li className="flex justify-between font-bold">
-                <span>Total</span>
-                <span>Rs. {getTotal()}</span>
-              </li>
-            </ul>
-          )}
-        </div>
+        <h3 className="text-xl font-semibold mb-3">Cart Summary</h3>
+        {/* Table Number Input */}
+        <Input
+          placeholder="Table Number"
+          value={tableNumber}
+          onChange={(e) => setTableNumber(e.target.value)}
+          className="mb-4"
+        />
 
-        {cart.length > 0 && (
-          <Button
-            type="primary"
-            icon={<PrinterOutlined />}
-            onClick={handlePrint}
-            className="mt-4 w-full"
-          >
-            Print Receipt
-          </Button>
+        {cart.length === 0 ? (
+          <p>No items added yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {cart.map((item) => (
+              <li
+                key={item._id}
+                className="flex justify-between items-center"
+              >
+                <span>{item.name}</span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="small"
+                    icon={<MinusOutlined />}
+                    onClick={() => handleDecrease(item._id)}
+                  />
+                  <span>{item.quantity}</span>
+                  <Button
+                    size="small"
+                    icon={<PlusOutlined />}
+                    onClick={() => handleIncrease(item._id)}
+                  />
+                </div>
+                <span>Rs. {item.price * item.quantity}</span>
+              </li>
+            ))}
+            <hr className="my-2" />
+            <li className="flex justify-between font-bold">
+              <span>Total</span>
+              <span>Rs. {getTotal()}</span>
+            </li>
+          </ul>
         )}
-        <Button
-          type="primary"
-          icon={<HistoryOutlined />}
-          onClick={handleAddToHistory}
-          className="m-4 w-full"
-        >
-          Add To History
-        </Button>
+
+        {/* Cash Received and Change Calculation */}
+        {cart.length > 0 && (
+          <>
+            <Input
+              type="number"
+              placeholder="Enter Cash Received"
+              value={cashReceived}
+              onChange={handleCashReceivedChange}
+              className="mb-4"
+            />
+            <div className="flex justify-between font-semibold">
+              <span>Change</span>
+              <span>Rs. {change.toFixed(2)}</span>
+            </div>
+
+            <Button
+              type="primary"
+              icon={<PrinterOutlined />}
+              onClick={handlePrint}
+              className="mt-4 w-full"
+            >
+              Print Receipt
+            </Button>
+
+            <Button
+              type="primary"
+              icon={<HistoryOutlined />}
+              onClick={handleAddToHistory}
+              className="m-4 w-full"
+            >
+              Place Order
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );
