@@ -15,11 +15,10 @@ const Orders = () => {
   const [editingOrderId, setEditingOrderId] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
-  // Fetch orders and menu items
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const ordersResponse = await axios.get('http://localhost:8080/api/orders');
+        const ordersResponse = await axios.get('https://pos-2-wv56.onrender.com/api/orders');
         const allOrders = ordersResponse.data;
         setOrders(allOrders.filter(o => o.status === 'Pending'));
         setCompletedOrders(allOrders.filter(o => o.status === 'Completed'));
@@ -31,7 +30,7 @@ const Orders = () => {
 
     const fetchMenuItems = async () => {
       try {
-        const menuResponse = await axios.get('http://localhost:8080/api/menu');
+        const menuResponse = await axios.get('https://pos-2-wv56.onrender.com/api/menu');
         setMenuItems(menuResponse.data);
       } catch (err) {
         console.error(err);
@@ -46,7 +45,7 @@ const Orders = () => {
   const handleSubmit = async (values) => {
     const { tableNumber, itemId, quantity } = values;
     try {
-      const response = await axios.post('http://localhost:8080/api/orders', {
+      const response = await axios.post('https://pos-2-wv56.onrender.com/api/orders', {
         tableNumber,
         itemId,
         quantity,
@@ -63,7 +62,7 @@ const Orders = () => {
 
   const markAsDone = async (orderId) => {
     try {
-      const response = await axios.put(`http://localhost:8080/api/orders/${orderId}/complete`);
+      const response = await axios.put(`https://pos-2-wv56.onrender.com/api/orders/${orderId}/complete`);
       setOrders(prev => prev.filter(o => o._id !== orderId));
       setCompletedOrders(prev => [...prev, response.data]);
       message.success('Order marked as completed');
@@ -81,7 +80,7 @@ const Orders = () => {
   const handleAddItem = async (values) => {
     const { itemId, quantity } = values;
     try {
-      const response = await axios.post(`http://localhost:8080/api/orders/${editingOrderId}/add-item`, {
+      const response = await axios.post(`https://pos-2-wv56.onrender.com/api/orders/${editingOrderId}/add-item`, {
         itemId,
         quantity,
         menu: menuItems
@@ -100,6 +99,44 @@ const Orders = () => {
       console.error(err);
       message.error('Failed to add item');
     }
+  };
+
+  const printOrder = (order) => {
+    const printWindow = window.open('', '_blank');
+    const printContent = `
+      <html>
+        <head>
+          <title>Order Receipt</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            h2 { text-align: center; }
+            .order-section { margin-bottom: 20px; }
+            .item-row { margin-bottom: 5px; }
+          </style>
+        </head>
+        <body>
+          <h2>The Sunset Cafe - Order Receipt</h2>
+          <div class="order-section">
+            <strong>Table Number:</strong> ${order.tableNumber}<br/>
+            <strong>Status:</strong> ${order.status}<br/>
+            <hr/>
+            <strong>Items:</strong>
+            <div>
+              ${order.items.map(item =>
+                `<div class="item-row">${item.itemName} (x${item.quantity})</div>`
+              ).join('')}
+            </div>
+            <hr/>
+            <strong>Total Price:</strong> Rs ${order.totalPrice}
+          </div>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
   };
 
   const columns = [
@@ -206,6 +243,9 @@ const Orders = () => {
                     </Button>
                     <Button type="dashed" size="small" onClick={() => openAddItemModal(order._id)}>
                       Add Item
+                    </Button>
+                    <Button type="default" size="small" onClick={() => printOrder(order)}>
+                      Print
                     </Button>
                   </div>
                 </Card>

@@ -18,7 +18,7 @@ const MenuPage = () => {
 
   useEffect(() => {
     axios
-      .get("http://localhost:8080/api/menu/")
+      .get("https://pos-2-wv56.onrender.com/api/menu/")
       .then((res) => {
         const categorized = res.data.reduce((acc, item) => {
           if (!acc[item.category]) acc[item.category] = [];
@@ -51,7 +51,7 @@ const MenuPage = () => {
   const handleAddToHistory = async () => {
     try {
       const total = getTotal();
-      await axios.post("http://localhost:8080/api/history", {
+      await axios.post("https://pos-2-wv56.onrender.com/api/history", {
         items: cart,
         total,
         tableNumber,
@@ -87,6 +87,16 @@ const MenuPage = () => {
 
   const handlePrint = () => {
     const win = window.open("", "", "width=600,height=700");
+    const now = new Date();
+    const formattedDateTime = now.toLocaleString([], {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  
     const itemsHTML = cart
       .map(
         (item) => `
@@ -146,10 +156,20 @@ const MenuPage = () => {
               object-fit: cover;
               margin-bottom: 10px;
             }
+            .date-time {
+              font-size: 12px;
+              color: #555;
+              margin-bottom: 10px;
+            }
           </style>
         </head>
         <body>
           <div class="receipt">
+            <div class="date-time">
+            <h1>
+            ${formattedDateTime}
+            </h1>
+            </div>
             <img src="https://front-end-drab-pi.vercel.app/assets/sunset-Cul1cxVA.jpg" alt="Logo" class="logo" />
             <div style="font-family: 'Great Vibes', cursive; font-size: 28px; color: #333; margin-bottom: 10px;">
               The Sunset Café
@@ -157,7 +177,7 @@ const MenuPage = () => {
             <hr />
             <h2>RECEIPT</h2>
             <hr />
-            <p>Table: ${tableNumber}</p> <!-- Added Table Number -->
+            <h3>Table: ${tableNumber}</h3>
             <table>
               ${itemsHTML}
               <tr class="total">
@@ -183,6 +203,7 @@ const MenuPage = () => {
     win.document.close();
     win.print();
   };
+  
   const renderItems = (category) => (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
       {menuItems[category]?.map((item) => (

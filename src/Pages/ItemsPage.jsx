@@ -20,7 +20,7 @@ const ItemsPage = () => {
 
   const fetchItems = async () => {
     try {
-      const res = await axios.get('http://localhost:8080/api/menu');
+      const res = await axios.get('https://pos-2-wv56.onrender.com/api/menu');
       setItems(res.data);
     } catch (error) {
       console.error(error);
@@ -41,7 +41,7 @@ const ItemsPage = () => {
 
       if (editingItemId) {
         // Update existing item
-        await axios.put(`http://localhost:8080/api/menu/${editingItemId}`, {
+        await axios.put(`https://pos-2-wv56.onrender.com/api/menu/${editingItemId}`, {
           name: formData.name,
           category: formData.category,
           price: parseFloat(formData.price),
@@ -51,7 +51,7 @@ const ItemsPage = () => {
         setEditingItemId(null);
       } else {
         // Add new item
-        await axios.post('http://localhost:8080/api/menu', {
+        await axios.post('https://pos-2-wv56.onrender.com/api/menu', {
           name: formData.name,
           category: formData.category,
           price: parseFloat(formData.price),
@@ -80,7 +80,7 @@ const ItemsPage = () => {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://localhost:8080/api/menu/${id}`);
+      await axios.delete(`https://pos-2-wv56.onrender.com/api/menu/${id}`);
       toast.success('Item deleted');
       fetchItems();
     } catch (error) {

@@ -11,7 +11,7 @@ const Inventory = () => {
 
   const fetchInventory = async () => {
     try {
-      const res = await axios.get('http://localhost:8080/api/inventory');
+      const res = await axios.get('https://pos-2-wv56.onrender.com/api/inventory');
       setInventory(res.data);
     } catch (error) {
       console.error(error);
@@ -24,7 +24,7 @@ const Inventory = () => {
 
   const handleAddItem = async (values) => {
     try {
-      const res = await axios.post('http://localhost:8080/api/inventory', {
+      const res = await axios.post('https://pos-2-wv56.onrender.com/api/inventory', {
         name: values.name,
         stock: values.stock,
       });
@@ -39,7 +39,7 @@ const Inventory = () => {
 
   const handleSellQuantityChange = async (value, record) => {
     try {
-      const res = await axios.put(`http://localhost:8080/api/inventory/${record._id}`, {
+      const res = await axios.put(`https://pos-2-wv56.onrender.com/api/inventory/${record._id}`, {
         sellQuantity: value,
       });
       const updatedInventory = inventory.map(item => {
