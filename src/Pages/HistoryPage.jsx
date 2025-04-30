@@ -12,22 +12,43 @@ const HistoryPage = () => {
   const [filteredHistory, setFilteredHistory] = useState([]);
   const [searchItem, setSearchItem] = useState('');
   const [dailySales, setDailySales] = useState({});
-  const [currentDayIndex, setCurrentDayIndex] = useState(0); // Tracks the current day being displayed
-  const [totalQuantityForSearch, setTotalQuantityForSearch] = useState(0); // Stores total quantity for searched item
+  const [currentDayIndex, setCurrentDayIndex] = useState(0);
+  const [totalQuantityForSearch, setTotalQuantityForSearch] = useState(0);
+  const [closingTimestamps, setClosingTimestamps] = useState(() => {
+    const saved = localStorage.getItem('closings');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [activeShiftIndex, setActiveShiftIndex] = useState(0);
 
   useEffect(() => {
-    axios.get('https://pos-2-wv56.onrender.com/api/history')
+    axios.get('https://backend-pos-zps4.onrender.com/api/history')
       .then((res) => {
         setHistory(res.data);
-        setFilteredHistory(res.data);
-        groupSalesByDay(res.data);
       })
       .catch((err) => console.error('Failed to fetch history', err));
   }, []);
 
+  useEffect(() => {
+    const shiftData = getShiftData();
+    setFilteredHistory(shiftData);
+    groupSalesByDay(shiftData);
+  }, [history, activeShiftIndex]);
+
+  const getShiftData = () => {
+    const start = activeShiftIndex === 0 ? new Date(0) : new Date(closingTimestamps[activeShiftIndex - 1]);
+    const end = closingTimestamps[activeShiftIndex]
+      ? new Date(closingTimestamps[activeShiftIndex])
+      : new Date();
+
+    return history.filter(entry => {
+      const entryDate = new Date(entry.date);
+      return entryDate >= start && entryDate < end;
+    });
+  };
+
   const groupSalesByDay = (historyData) => {
     const salesByDay = historyData.reduce((acc, entry) => {
-      const date = moment(entry.date).format('YYYY-MM-DD'); // Group by date only
+      const date = moment(entry.date).format('YYYY-MM-DD');
       if (!acc[date]) {
         acc[date] = { totalQuantity: 0, totalAmount: 0, sales: [] };
       }
@@ -38,8 +59,8 @@ const HistoryPage = () => {
       acc[date].sales.push(entry);
       return acc;
     }, {});
-
     setDailySales(salesByDay);
+    setCurrentDayIndex(0);
   };
 
   const handleDownloadPDF = () => {
@@ -48,14 +69,15 @@ const HistoryPage = () => {
     doc.text('Sales History', 14, 15);
     doc.setFontSize(12);
     doc.setTextColor(100);
-  
+
     Object.keys(dailySales).forEach(date => {
       const { totalQuantity, totalAmount, sales } = dailySales[date];
-      doc.text(`Date: ${date}`, 14, doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 20);  // Use lastAutoTable instead of previous
-  
-      doc.text(`Total Items Sold: ${totalQuantity}`, 14, doc.lastAutoTable ? doc.lastAutoTable.finalY + 15 : 25);
-      doc.text(`Total Sales: Rs. ${totalAmount.toFixed(2)}`, 14, doc.lastAutoTable ? doc.lastAutoTable.finalY + 20 : 30);
-  
+      const yStart = doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 20;
+
+      doc.text(`Date: ${date}`, 14, yStart);
+      doc.text(`Total Items Sold: ${totalQuantity}`, 14, yStart + 5);
+      doc.text(`Total Sales: Rs. ${totalAmount.toFixed(2)}`, 14, yStart + 10);
+
       const tableRows = sales.map(entry => {
         const formattedDate = moment(entry.date).format('DD-MM-YYYY hh:mm A');
         const itemsStr = entry.items
@@ -64,25 +86,26 @@ const HistoryPage = () => {
         const total = `Rs. ${entry.total.toFixed(2)}`;
         return [formattedDate, itemsStr, total];
       });
-  
+
       autoTable(doc, {
         head: [['Date', 'Items', 'Total (Rs.)']],
         body: tableRows,
-        startY: doc.lastAutoTable ? doc.lastAutoTable.finalY + 25 : 40,  // Adjust starting Y position
+        startY: doc.lastAutoTable ? doc.lastAutoTable.finalY + 25 : 40,
       });
     });
-  
+
     doc.save('sales_history_per_day.pdf');
   };
-  
+
   const handleSearch = () => {
     if (!searchItem.trim()) {
-      setFilteredHistory(history);
+      setFilteredHistory(getShiftData());
       setTotalQuantityForSearch(0);
       return;
     }
 
-    const filtered = history.filter(entry =>
+    const shiftData = getShiftData();
+    const filtered = shiftData.filter(entry =>
       entry.items.some(item =>
         item.name.toLowerCase().includes(searchItem.trim().toLowerCase())
       )
@@ -90,7 +113,6 @@ const HistoryPage = () => {
 
     setFilteredHistory(filtered);
 
-    // Calculate the total quantity of the searched item
     const totalQuantity = filtered.reduce((acc, entry) => {
       entry.items.forEach(item => {
         if (item.name.toLowerCase().includes(searchItem.trim().toLowerCase())) {
@@ -100,19 +122,40 @@ const HistoryPage = () => {
       return acc;
     }, 0);
 
-    setTotalQuantityForSearch(totalQuantity); // Store the total quantity
+    setTotalQuantityForSearch(totalQuantity);
+  };
+
+  const handleClose = () => {
+    const now = new Date().toISOString();
+    const updatedClosings = [...closingTimestamps, now];
+    setClosingTimestamps(updatedClosings);
+    localStorage.setItem('closings', JSON.stringify(updatedClosings));
+    setActiveShiftIndex(updatedClosings.length);
   };
 
   const handleNextDay = () => {
     const totalDays = Object.keys(dailySales).length;
     if (currentDayIndex < totalDays - 1) {
-      setCurrentDayIndex(currentDayIndex + 1); // Show the next day
+      setCurrentDayIndex(currentDayIndex + 1);
     }
   };
 
   const handlePreviousDay = () => {
     if (currentDayIndex > 0) {
-      setCurrentDayIndex(currentDayIndex - 1); // Show the previous day
+      setCurrentDayIndex(currentDayIndex - 1);
+    }
+  };
+
+  const handleNextShift = () => {
+    const totalShifts = closingTimestamps.length + 1;
+    if (activeShiftIndex < totalShifts - 1) {
+      setActiveShiftIndex(activeShiftIndex + 1);
+    }
+  };
+
+  const handlePrevShift = () => {
+    if (activeShiftIndex > 0) {
+      setActiveShiftIndex(activeShiftIndex - 1);
     }
   };
 
@@ -145,9 +188,9 @@ const HistoryPage = () => {
     },
   ];
 
-  // Get the current day's data
   const currentDay = Object.keys(dailySales)[currentDayIndex];
   const currentDaySales = dailySales[currentDay] || { sales: [], totalQuantity: 0, totalAmount: 0 };
+  const totalShifts = closingTimestamps.length + 1;
 
   return (
     <div className="p-6">
@@ -158,16 +201,30 @@ const HistoryPage = () => {
       <Card
         title="🕓 Sales History"
         extra={
-          <Button
-            icon={<DownloadOutlined />}
-            onClick={handleDownloadPDF}
-            type="primary"
-          >
+          <Button icon={<DownloadOutlined />} onClick={handleDownloadPDF} type="primary">
             Download PDF
           </Button>
         }
         className="shadow-lg"
       >
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+          <Button onClick={handleClose} danger>
+            Close Shift
+          </Button>
+          <Button onClick={handlePrevShift} disabled={activeShiftIndex === 0}>
+            Previous Shift
+          </Button>
+          <Button
+            onClick={handleNextShift}
+            disabled={activeShiftIndex === totalShifts - 1}
+          >
+            Next Shift
+          </Button>
+          <div style={{ marginLeft: 'auto', fontWeight: 'bold' }}>
+            Viewing Shift: {activeShiftIndex + 1} / {totalShifts}
+          </div>
+        </div>
+
         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
           <Input
             placeholder="Enter Item to Search"
@@ -180,16 +237,14 @@ const HistoryPage = () => {
           </Button>
         </div>
 
-        {/* Displaying Total Quantity for the specific item */}
         {searchItem && (
           <div style={{ marginBottom: '20px' }}>
             <strong>
-              Total Quantity for "{searchItem}": {totalQuantityForSearch} Item.
+              Total Quantity for "{searchItem}": {totalQuantityForSearch} Item(s)
             </strong>
           </div>
         )}
 
-        {/* Display per day sales summary */}
         <div style={{ marginBottom: '20px' }}>
           <h3>{currentDay}</h3>
           <p>Total Items Sold: {currentDaySales.totalQuantity}</p>
@@ -203,12 +258,8 @@ const HistoryPage = () => {
           />
         </div>
 
-        {/* Navigation buttons for Next and Previous days */}
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Button
-            onClick={handlePreviousDay}
-            disabled={currentDayIndex === 0}
-          >
+          <Button onClick={handlePreviousDay} disabled={currentDayIndex === 0}>
             Previous Day
           </Button>
           <Button

@@ -36,7 +36,7 @@ const DailyExpenses = () => {
   // GET all expenses
   const getExpenses = async () => {
     try {
-      const response = await axios.get('https://pos-2-wv56.onrender.com/api/expensies/');
+      const response = await axios.get('https://backend-pos-zps4.onrender.com/api/expensies/');
       setExpenses(response.data);
     } catch (err) {
       message.error('Error fetching expenses');
@@ -54,10 +54,10 @@ const DailyExpenses = () => {
 
     try {
       if (editingId) {
-        await axios.put(`https://pos-2-wv56.onrender.com/api/expensies/${editingId}`, payload);
+        await axios.put(`https://backend-pos-zps4.onrender.com/api/expensies/${editingId}`, payload);
         message.success('Expense updated');
       } else {
-        await axios.post('https://pos-2-wv56.onrender.com/api/expensies', payload);
+        await axios.post('https://backend-pos-zps4.onrender.com/api/expensies', payload);
         message.success('Expense added');
       }
       form.resetFields();
@@ -82,7 +82,7 @@ const DailyExpenses = () => {
   // DELETE expense
   const onDelete = async (id) => {
     try {
-      await axios.delete(`https://pos-2-wv56.onrender.com/api/expensies/${id}`);
+      await axios.delete(`https://backend-pos-zps4.onrender.com/api/expensies/${id}`);
       message.success('Deleted successfully');
       getExpenses();
     } catch {

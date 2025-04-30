@@ -15,7 +15,7 @@ const LoginPage = () => {
     setLoading(true);
     try {
       const response = await axios.post(
-        "https://pos-2-wv56.onrender.com/api/users/login",
+        "https://backend-pos-zps4.onrender.com/api/users/login",
         {
           email: values.email,
           password: values.password,

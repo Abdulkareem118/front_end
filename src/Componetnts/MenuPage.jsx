@@ -18,7 +18,7 @@ const MenuPage = () => {
 
   useEffect(() => {
     axios
-      .get("https://pos-2-wv56.onrender.com/api/menu/")
+      .get("https://backend-pos-zps4.onrender.com/api/menu/")
       .then((res) => {
         const categorized = res.data.reduce((acc, item) => {
           if (!acc[item.category]) acc[item.category] = [];
@@ -51,7 +51,7 @@ const MenuPage = () => {
   const handleAddToHistory = async () => {
     try {
       const total = getTotal();
-      await axios.post("https://pos-2-wv56.onrender.com/api/history", {
+      await axios.post("https://backend-pos-zps4.onrender.com/api/history", {
         items: cart,
         total,
         tableNumber,
