@@ -64,38 +64,40 @@ const HistoryPage = () => {
   };
 
   const handleDownloadPDF = () => {
-    const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text('Sales History', 14, 15);
-    doc.setFontSize(12);
-    doc.setTextColor(100);
+  const doc = new jsPDF();
+  doc.setFontSize(18);
+  doc.text('Sales History', 14, 15);
+  doc.setFontSize(12);
+  doc.setTextColor(100);
 
-    Object.keys(dailySales).forEach(date => {
-      const { totalQuantity, totalAmount, sales } = dailySales[date];
-      const yStart = doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 20;
+  Object.keys(dailySales).forEach(date => {
+    const { totalQuantity, totalAmount, sales } = dailySales[date];
+    const yStart = doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 20;
 
-      doc.text(`Date: ${date}`, 14, yStart);
-      doc.text(`Total Items Sold: ${totalQuantity}`, 14, yStart + 5);
-      doc.text(`Total Sales: Rs. ${totalAmount.toFixed(2)}`, 14, yStart + 10);
+    doc.text(`Date: ${date}`, 14, yStart);
+    doc.text(`Total Items Sold: ${totalQuantity}`, 14, yStart + 5);
+    doc.text(`Total Sales: Rs. ${totalAmount.toFixed(2)}`, 14, yStart + 10);
 
-      const tableRows = sales.map(entry => {
-        const formattedDate = moment(entry.date).format('DD-MM-YYYY hh:mm A');
-        const itemsStr = entry.items
-          .map(item => `${item.name} x ${item.quantity} = Rs. ${(item.price * item.quantity).toFixed(2)}`)
-          .join('\n');
-        const total = `Rs. ${entry.total.toFixed(2)}`;
-        return [formattedDate, itemsStr, total];
-      });
-
-      autoTable(doc, {
-        head: [['Date', 'Items', 'Total (Rs.)']],
-        body: tableRows,
-        startY: doc.lastAutoTable ? doc.lastAutoTable.finalY + 25 : 40,
-      });
+    const tableRows = sales.map((entry, index) => {
+      const orderNumber = index + 1;
+      const formattedDate = moment(entry.date).format('DD-MM-YYYY hh:mm A');
+      const itemsStr = entry.items
+        .map(item => `${item.name} x ${item.quantity} = Rs. ${(item.price * item.quantity).toFixed(2)}`)
+        .join('\n');
+      const total = `Rs. ${entry.total.toFixed(2)}`;
+      return [orderNumber, formattedDate, itemsStr, total];
     });
 
-    doc.save('sales_history_per_day.pdf');
-  };
+    autoTable(doc, {
+      head: [['Order #', 'Date', 'Items', 'Total (Rs.)']],
+      body: tableRows,
+      startY: doc.lastAutoTable ? doc.lastAutoTable.finalY + 25 : 40,
+    });
+  });
+
+  doc.save('sales_history_per_day.pdf');
+};
+
 
   const handleSearch = () => {
     if (!searchItem.trim()) {
@@ -126,12 +128,25 @@ const HistoryPage = () => {
   };
 
   const handleClose = () => {
-    const now = new Date().toISOString();
-    const updatedClosings = [...closingTimestamps, now];
-    setClosingTimestamps(updatedClosings);
-    localStorage.setItem('closings', JSON.stringify(updatedClosings));
-    setActiveShiftIndex(updatedClosings.length);
+    axios.post('https://backend-pos-zps4.onrender.com/api/shifts')
+      .then(res => {
+        const newTimestamp = res.data.timestamp;
+        const updated = [...closingTimestamps, newTimestamp];
+        setClosingTimestamps(updated);
+        setActiveShiftIndex(updated.length);
+      })
+      .catch(err => console.error('Failed to close shift', err));
   };
+  
+
+  useEffect(() => {
+    axios.get('https://backend-pos-zps4.onrender.com/api/shifts')
+      .then(res => {
+        setClosingTimestamps(res.data.map(s => s.timestamp));
+      })
+      .catch(err => console.error('Failed to fetch shifts', err));
+  }, []);
+  
 
   const handleNextDay = () => {
     const totalDays = Object.keys(dailySales).length;

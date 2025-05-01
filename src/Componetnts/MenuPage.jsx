@@ -1,7 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
-import { Tabs, Card, Button, Input, message } from "antd";
-import { PlusOutlined, MinusOutlined, PrinterOutlined, HistoryOutlined } from "@ant-design/icons";
+import { Tabs, Card, Button, Input } from "antd";
+import {
+  PlusOutlined,
+  MinusOutlined,
+  PrinterOutlined,
+  HistoryOutlined,
+} from "@ant-design/icons";
 import toast, { Toaster } from "react-hot-toast";
 
 const { TabPane } = Tabs;
@@ -14,7 +19,6 @@ const MenuPage = () => {
   const [tableNumber, setTableNumber] = useState("");
   const [cashReceived, setCashReceived] = useState("");
   const [change, setChange] = useState(0);
-  const printRef = useRef();
 
   useEffect(() => {
     axios
@@ -50,14 +54,17 @@ const MenuPage = () => {
 
   const handleAddToHistory = async () => {
     try {
-      const total = getTotal();
+      const grandTotal = getGrandTotal();
       await axios.post("https://backend-pos-zps4.onrender.com/api/history", {
         items: cart,
-        total,
+        total: grandTotal,
         tableNumber,
       });
       toast.success("Order placed and history saved!");
       setCart([]);
+      setCashReceived("");
+      setChange(0);
+      setTableNumber("");
     } catch (error) {
       toast.error("Failed to save history");
       console.error(error);
@@ -85,29 +92,36 @@ const MenuPage = () => {
   const getTotal = () =>
     cart.reduce((total, item) => total + item.price * item.quantity, 0);
 
+  const getServiceTax = () => {
+    const baseTotal = getTotal();
+    return baseTotal >= 3000 ? baseTotal * 0.05 : 0;
+  };
+
+  const getGrandTotal = () => getTotal() + getServiceTax();
+
   const handlePrint = () => {
     const win = window.open("", "", "width=600,height=700");
     const now = new Date();
     const formattedDateTime = now.toLocaleString([], {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
     });
-  
+
     const itemsHTML = cart
       .map(
         (item) => `
-          <tr>
-            <td>${item.name} (x${item.quantity})</td>
-            <td style="text-align: right;">Rs${(item.price * item.quantity).toFixed(2)}</td>
-          </tr>
-        `
+        <tr>
+          <td>${item.name} (x${item.quantity})</td>
+          <td style="text-align: right;">Rs${(item.price * item.quantity).toFixed(2)}</td>
+        </tr>
+      `
       )
       .join("");
-  
+
     win.document.write(`
       <html>
         <head>
@@ -166,9 +180,7 @@ const MenuPage = () => {
         <body>
           <div class="receipt">
             <div class="date-time">
-            <h1>
-            ${formattedDateTime}
-            </h1>
+              <h1>${formattedDateTime}</h1>
             </div>
             <img src="https://front-end-drab-pi.vercel.app/assets/sunset-Cul1cxVA.jpg" alt="Logo" class="logo" />
             <div style="font-family: 'Great Vibes', cursive; font-size: 28px; color: #333; margin-bottom: 10px;">
@@ -180,9 +192,20 @@ const MenuPage = () => {
             <h3>Table: ${tableNumber}</h3>
             <table>
               ${itemsHTML}
-              <tr class="total">
-                <td>Total Amount</td>
+              <tr>
+                <td>Subtotal</td>
                 <td style="text-align: right;">Rs${getTotal().toFixed(2)}</td>
+              </tr>
+              ${
+                getServiceTax() > 0
+                  ? `<tr><td>Service Tax (5%)</td><td style="text-align:right;">Rs${getServiceTax().toFixed(
+                      2
+                    )}</td></tr>`
+                  : ""
+              }
+              <tr class="total">
+                <td>Grand Total</td>
+                <td style="text-align: right;">Rs${getGrandTotal().toFixed(2)}</td>
               </tr>
               <tr>
                 <td>Received Cash</td>
@@ -203,7 +226,18 @@ const MenuPage = () => {
     win.document.close();
     win.print();
   };
-  
+
+  const handleCashReceivedChange = (e) => {
+    const cash = e.target.value;
+    setCashReceived(cash);
+    const total = getGrandTotal();
+    if (cash && !isNaN(cash)) {
+      setChange(cash - total);
+    } else {
+      setChange(0);
+    }
+  };
+
   const renderItems = (category) => (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
       {menuItems[category]?.map((item) => (
@@ -220,17 +254,6 @@ const MenuPage = () => {
       ))}
     </div>
   );
-
-  const handleCashReceivedChange = (e) => {
-    const cash = e.target.value;
-    setCashReceived(cash);
-    const total = getTotal();
-    if (cash && !isNaN(cash)) {
-      setChange(cash - total);
-    } else {
-      setChange(0);
-    }
-  };
 
   return (
     <div className="flex flex-col md:flex-row p-6 gap-6">
@@ -257,7 +280,6 @@ const MenuPage = () => {
 
       <div className="md:w-1/3 bg-white p-4 rounded-xl shadow-md h-fit">
         <h3 className="text-xl font-semibold mb-3">Cart Summary</h3>
-        {/* Table Number Input */}
         <Input
           placeholder="Table Number"
           value={tableNumber}
@@ -292,14 +314,23 @@ const MenuPage = () => {
               </li>
             ))}
             <hr className="my-2" />
+            <li className="flex justify-between">
+              <span>Subtotal</span>
+              <span>Rs. {getTotal().toFixed(2)}</span>
+            </li>
+            {getServiceTax() > 0 && (
+              <li className="flex justify-between text-blue-600">
+                <span>Service Tax (5%)</span>
+                <span>Rs. {getServiceTax().toFixed(2)}</span>
+              </li>
+            )}
             <li className="flex justify-between font-bold">
-              <span>Total</span>
-              <span>Rs. {getTotal()}</span>
+              <span>Grand Total</span>
+              <span>Rs. {getGrandTotal().toFixed(2)}</span>
             </li>
           </ul>
         )}
 
-        {/* Cash Received and Change Calculation */}
         {cart.length > 0 && (
           <>
             <Input
@@ -307,9 +338,9 @@ const MenuPage = () => {
               placeholder="Enter Cash Received"
               value={cashReceived}
               onChange={handleCashReceivedChange}
-              className="mb-4"
+              className="mt-4 mb-2"
             />
-            <div className="flex justify-between font-semibold">
+            <div className="flex justify-between font-semibold mb-4">
               <span>Change</span>
               <span>Rs. {change.toFixed(2)}</span>
             </div>
@@ -318,16 +349,15 @@ const MenuPage = () => {
               type="primary"
               icon={<PrinterOutlined />}
               onClick={handlePrint}
-              className="mt-4 w-full"
+              className="w-full mb-2"
             >
               Print Receipt
             </Button>
-
             <Button
               type="primary"
               icon={<HistoryOutlined />}
               onClick={handleAddToHistory}
-              className="m-4 w-full"
+              className="w-full m-4"
             >
               Place Order
             </Button>
