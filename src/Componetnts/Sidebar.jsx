@@ -24,7 +24,7 @@ const Sidebar = () => {
     { name: 'Add Items', path: '/Items', icon: <ShoppingCartOutlined /> },
     { name: 'History', path: '/History', icon: <HistoryOutlined /> },
     { name: 'Orders', path: '/orders', icon: <ShoppingCartOutlined /> },
-  // { name: 'Inventory', path: '/inventory', icon: <AppstoreOutlined /> },
+  { name: 'Inventory', path: '/inventory', icon: <AppstoreOutlined /> },
   ];
 
   return (

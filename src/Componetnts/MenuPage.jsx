@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Tabs, Card, Button, Input } from "antd";
 import {
@@ -6,6 +6,7 @@ import {
   MinusOutlined,
   PrinterOutlined,
   HistoryOutlined,
+  SearchOutlined,
 } from "@ant-design/icons";
 import toast, { Toaster } from "react-hot-toast";
 
@@ -19,6 +20,7 @@ const MenuPage = () => {
   const [tableNumber, setTableNumber] = useState("");
   const [cashReceived, setCashReceived] = useState("");
   const [change, setChange] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     axios
@@ -127,98 +129,39 @@ const MenuPage = () => {
         <head>
           <title>Receipt</title>
           <style>
-            body {
-              font-family: Arial, sans-serif;
-              padding: 20px;
-              background: #f5f5f5;
-            }
-            .receipt {
-              width: 300px;
-              margin: 0 auto;
-              background: white;
-              padding: 20px;
-              box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
-              text-align: center;
-            }
-            h2, h3 {
-              margin: 10px 0;
-            }
-            table {
-              width: 100%;
-              margin-top: 15px;
-              border-collapse: collapse;
-              text-align: left;
-            }
-            td {
-              padding: 5px 0;
-              font-size: 14px;
-            }
-            .total {
-              font-weight: bold;
-              border-top: 1px solid #000;
-              margin-top: 10px;
-            }
-            .footer {
-              text-align: center;
-              margin-top: 20px;
-              font-size: 14px;
-            }
-            .logo {
-              width: 60px;
-              height: 60px;
-              border-radius: 50%;
-              object-fit: cover;
-              margin-bottom: 10px;
-            }
-            .date-time {
-              font-size: 12px;
-              color: #555;
-              margin-bottom: 10px;
-            }
+            body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+            .receipt { width: 300px; margin: auto; background: white; padding: 20px; text-align: center; }
+            h2, h3 { margin: 10px 0; }
+            table { width: 100%; margin-top: 15px; border-collapse: collapse; text-align: left; }
+            td { padding: 5px 0; font-size: 14px; }
+            .total { font-weight: bold; border-top: 1px solid #000; margin-top: 10px; }
+            .footer { margin-top: 20px; font-size: 14px; }
+            .logo { width: 60px; height: 60px; border-radius: 50%; margin-bottom: 10px; }
+            .date-time { font-size: 12px; color: #555; margin-bottom: 10px; }
           </style>
         </head>
         <body>
           <div class="receipt">
-            <div class="date-time">
-              <h1>${formattedDateTime}</h1>
-            </div>
+            <div class="date-time"><h1>${formattedDateTime}</h1></div>
             <img src="https://front-end-drab-pi.vercel.app/assets/sunset-Cul1cxVA.jpg" alt="Logo" class="logo" />
-            <div style="font-family: 'Great Vibes', cursive; font-size: 28px; color: #333; margin-bottom: 10px;">
-              The Sunset Café
-            </div>
+            <div style="font-family: 'Great Vibes', cursive; font-size: 28px;">The Sunset Café</div>
             <hr />
             <h2>RECEIPT</h2>
             <hr />
             <h3>Table: ${tableNumber}</h3>
             <table>
               ${itemsHTML}
-              <tr>
-                <td>Subtotal</td>
-                <td style="text-align: right;">Rs${getTotal().toFixed(2)}</td>
-              </tr>
+              <tr><td>Subtotal</td><td style="text-align:right;">Rs${getTotal().toFixed(2)}</td></tr>
               ${
                 getServiceTax() > 0
-                  ? `<tr><td>Service Tax (5%)</td><td style="text-align:right;">Rs${getServiceTax().toFixed(
-                      2
-                    )}</td></tr>`
+                  ? `<tr><td>Service Tax (5%)</td><td style="text-align:right;">Rs${getServiceTax().toFixed(2)}</td></tr>`
                   : ""
               }
-              <tr class="total">
-                <td>Grand Total</td>
-                <td style="text-align: right;">Rs${getGrandTotal().toFixed(2)}</td>
-              </tr>
-              <tr>
-                <td>Received Cash</td>
-                <td style="text-align: right;">Rs${parseFloat(cashReceived).toFixed(2)}</td>
-              </tr>
-              <tr>
-                <td>Change</td>
-                <td style="text-align: right;">Rs${change.toFixed(2)}</td>
-              </tr>
+              <tr class="total"><td>Grand Total</td><td style="text-align:right;">Rs${getGrandTotal().toFixed(2)}</td></tr>
+              <tr><td>Received Cash</td><td style="text-align:right;">Rs${parseFloat(cashReceived).toFixed(2)}</td></tr>
+              <tr><td>Change</td><td style="text-align:right;">Rs${change.toFixed(2)}</td></tr>
             </table>
-            <div class="footer">
-              <p>THANK YOU</p>
-            </div>
+            <div class="footer"><p>THANK YOU</p></div>
           </div>
         </body>
       </html>
@@ -238,28 +181,47 @@ const MenuPage = () => {
     }
   };
 
-  const renderItems = (category) => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
-      {menuItems[category]?.map((item) => (
-        <Card
-          key={item._id}
-          title={item.name}
-          extra={`Rs. ${item.price}`}
-          className="shadow-md min-h-[150px]"
-        >
-          <Button type="primary" onClick={() => handleAddToCart(item)}>
-            Add to Cart
-          </Button>
-        </Card>
-      ))}
-    </div>
-  );
+  const renderItems = (category) => {
+    const items = menuItems[category]?.filter((item) =>
+      item.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    if (!items || items.length === 0) {
+      return <p>No items found in this category.</p>;
+    }
+
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
+        {items.map((item) => (
+          <Card
+            key={item._id}
+            title={item.name}
+            extra={`Rs. ${item.price}`}
+            className="shadow-md min-h-[150px]"
+          >
+            <Button type="primary" onClick={() => handleAddToCart(item)}>
+              Add to Cart
+            </Button>
+          </Card>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="flex flex-col md:flex-row p-6 gap-6">
       <Toaster />
       <div className="md:w-2/3">
         <h2 className="text-2xl font-bold mb-4">Menu</h2>
+
+        <Input
+          placeholder="Search item..."
+          prefix={<SearchOutlined />}
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="mb-4"
+        />
+
         {loading ? (
           <p>Loading menu...</p>
         ) : error ? (
@@ -290,49 +252,47 @@ const MenuPage = () => {
         {cart.length === 0 ? (
           <p>No items added yet.</p>
         ) : (
-          <ul className="space-y-2">
-            {cart.map((item) => (
-              <li
-                key={item._id}
-                className="flex justify-between items-center"
-              >
-                <span>{item.name}</span>
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="small"
-                    icon={<MinusOutlined />}
-                    onClick={() => handleDecrease(item._id)}
-                  />
-                  <span>{item.quantity}</span>
-                  <Button
-                    size="small"
-                    icon={<PlusOutlined />}
-                    onClick={() => handleIncrease(item._id)}
-                  />
-                </div>
-                <span>Rs. {item.price * item.quantity}</span>
-              </li>
-            ))}
+          <>
+            <ul className="space-y-2">
+              {cart.map((item) => (
+                <li
+                  key={item._id}
+                  className="flex justify-between items-center"
+                >
+                  <span>{item.name}</span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="small"
+                      icon={<MinusOutlined />}
+                      onClick={() => handleDecrease(item._id)}
+                    />
+                    <span>{item.quantity}</span>
+                    <Button
+                      size="small"
+                      icon={<PlusOutlined />}
+                      onClick={() => handleIncrease(item._id)}
+                    />
+                  </div>
+                  <span>Rs. {item.price * item.quantity}</span>
+                </li>
+              ))}
+            </ul>
             <hr className="my-2" />
-            <li className="flex justify-between">
+            <div className="flex justify-between">
               <span>Subtotal</span>
               <span>Rs. {getTotal().toFixed(2)}</span>
-            </li>
+            </div>
             {getServiceTax() > 0 && (
-              <li className="flex justify-between text-blue-600">
+              <div className="flex justify-between text-blue-600">
                 <span>Service Tax (5%)</span>
                 <span>Rs. {getServiceTax().toFixed(2)}</span>
-              </li>
+              </div>
             )}
-            <li className="flex justify-between font-bold">
+            <div className="flex justify-between font-bold">
               <span>Grand Total</span>
               <span>Rs. {getGrandTotal().toFixed(2)}</span>
-            </li>
-          </ul>
-        )}
+            </div>
 
-        {cart.length > 0 && (
-          <>
             <Input
               type="number"
               placeholder="Enter Cash Received"

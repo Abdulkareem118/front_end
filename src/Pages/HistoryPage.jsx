@@ -269,7 +269,7 @@ const HistoryPage = () => {
             dataSource={currentDaySales.sales}
             columns={columns}
             rowKey="_id"
-            pagination={{ pageSize: 5 }}
+            pagination={{ pageSize: 50 }}
           />
         </div>
 
