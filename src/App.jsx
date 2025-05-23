@@ -9,6 +9,7 @@ import DailyExpensies from './Componetnts/DailyExpensies';
 import HistoryPage from './Pages/HistoryPage';
 import Orders from './Componetnts/Orders';
 import Inventory from './Componetnts/Inventory';
+import Billing from './Componetnts/Billing';
 
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
       <Route path='/History' element={<HistoryPage/>}/>
       <Route path='/Orders' element={<Orders/>}/>
       <Route path='/Inventory' element={<Inventory/>}/>
+      <Route path='/Billing' element={<Billing/>}/>
     </Routes>
     
     </BrowserRouter>

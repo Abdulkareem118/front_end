@@ -11,8 +11,6 @@ const HistoryPage = () => {
   const [history, setHistory] = useState([]);
   const [filteredHistory, setFilteredHistory] = useState([]);
   const [searchItem, setSearchItem] = useState('');
-  const [dailySales, setDailySales] = useState({});
-  const [currentDayIndex, setCurrentDayIndex] = useState(0);
   const [totalQuantityForSearch, setTotalQuantityForSearch] = useState(0);
   const [closingTimestamps, setClosingTimestamps] = useState(() => {
     const saved = localStorage.getItem('closings');
@@ -22,16 +20,21 @@ const HistoryPage = () => {
 
   useEffect(() => {
     axios.get('https://backend-pos-zps4.onrender.com/api/history')
-      .then((res) => {
-        setHistory(res.data);
-      })
+      .then((res) => setHistory(res.data))
       .catch((err) => console.error('Failed to fetch history', err));
+  }, []);
+
+  useEffect(() => {
+    axios.get('https://backend-pos-zps4.onrender.com/api/shifts')
+      .then(res => {
+        setClosingTimestamps(res.data.map(s => s.timestamp));
+      })
+      .catch(err => console.error('Failed to fetch shifts', err));
   }, []);
 
   useEffect(() => {
     const shiftData = getShiftData();
     setFilteredHistory(shiftData);
-    groupSalesByDay(shiftData);
   }, [history, activeShiftIndex]);
 
   const getShiftData = () => {
@@ -45,59 +48,6 @@ const HistoryPage = () => {
       return entryDate >= start && entryDate < end;
     });
   };
-
-  const groupSalesByDay = (historyData) => {
-    const salesByDay = historyData.reduce((acc, entry) => {
-      const date = moment(entry.date).format('YYYY-MM-DD');
-      if (!acc[date]) {
-        acc[date] = { totalQuantity: 0, totalAmount: 0, sales: [] };
-      }
-      entry.items.forEach(item => {
-        acc[date].totalQuantity += item.quantity;
-        acc[date].totalAmount += item.price * item.quantity;
-      });
-      acc[date].sales.push(entry);
-      return acc;
-    }, {});
-    setDailySales(salesByDay);
-    setCurrentDayIndex(0);
-  };
-
-  const handleDownloadPDF = () => {
-  const doc = new jsPDF();
-  doc.setFontSize(18);
-  doc.text('Sales History', 14, 15);
-  doc.setFontSize(12);
-  doc.setTextColor(100);
-
-  Object.keys(dailySales).forEach(date => {
-    const { totalQuantity, totalAmount, sales } = dailySales[date];
-    const yStart = doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 20;
-
-    doc.text(`Date: ${date}`, 14, yStart);
-    doc.text(`Total Items Sold: ${totalQuantity}`, 14, yStart + 5);
-    doc.text(`Total Sales: Rs. ${totalAmount.toFixed(2)}`, 14, yStart + 10);
-
-    const tableRows = sales.map((entry, index) => {
-      const orderNumber = index + 1;
-      const formattedDate = moment(entry.date).format('DD-MM-YYYY hh:mm A');
-      const itemsStr = entry.items
-        .map(item => `${item.name} x ${item.quantity} = Rs. ${(item.price * item.quantity).toFixed(2)}`)
-        .join('\n');
-      const total = `Rs. ${entry.total.toFixed(2)}`;
-      return [orderNumber, formattedDate, itemsStr, total];
-    });
-
-    autoTable(doc, {
-      head: [['Order #', 'Date', 'Items', 'Total (Rs.)']],
-      body: tableRows,
-      startY: doc.lastAutoTable ? doc.lastAutoTable.finalY + 25 : 40,
-    });
-  });
-
-  doc.save('sales_history_per_day.pdf');
-};
-
 
   const handleSearch = () => {
     if (!searchItem.trim()) {
@@ -128,7 +78,7 @@ const HistoryPage = () => {
   };
 
   const handleClose = () => {
-    axios.post('https://backend-pos-zps4.onrender.com/api/shifts')
+    axios.post('http://localhost:8080/api/shifts')
       .then(res => {
         const newTimestamp = res.data.timestamp;
         const updated = [...closingTimestamps, newTimestamp];
@@ -137,28 +87,41 @@ const HistoryPage = () => {
       })
       .catch(err => console.error('Failed to close shift', err));
   };
-  
 
-  useEffect(() => {
-    axios.get('https://backend-pos-zps4.onrender.com/api/shifts')
-      .then(res => {
-        setClosingTimestamps(res.data.map(s => s.timestamp));
-      })
-      .catch(err => console.error('Failed to fetch shifts', err));
-  }, []);
-  
+  const handleDownloadPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text(`Shift #${activeShiftIndex + 1} Sales`, 14, 15);
+    doc.setFontSize(12);
+    doc.setTextColor(100);
 
-  const handleNextDay = () => {
-    const totalDays = Object.keys(dailySales).length;
-    if (currentDayIndex < totalDays - 1) {
-      setCurrentDayIndex(currentDayIndex + 1);
-    }
-  };
+    const shiftSales = getShiftData();
+    let totalQuantity = 0;
+    let totalAmount = 0;
 
-  const handlePreviousDay = () => {
-    if (currentDayIndex > 0) {
-      setCurrentDayIndex(currentDayIndex - 1);
-    }
+    const tableRows = shiftSales.map((entry, index) => {
+      const formattedDate = moment(entry.date).format('DD-MM-YYYY hh:mm A');
+      const itemsStr = entry.items
+        .map(item => {
+          totalQuantity += item.quantity;
+          totalAmount += item.price * item.quantity;
+          return `${item.name} x ${item.quantity} = Rs. ${(item.price * item.quantity).toFixed(2)}`
+        })
+        .join('\n');
+      const total = `Rs. ${entry.total.toFixed(2)}`;
+      return [index + 1, formattedDate, itemsStr, total];
+    });
+
+    doc.text(`Total Items Sold: ${totalQuantity}`, 14, 25);
+    doc.text(`Total Sales: Rs. ${totalAmount.toFixed(2)}`, 14, 30);
+
+    autoTable(doc, {
+      head: [['Order #', 'Date', 'Items', 'Total (Rs.)']],
+      body: tableRows,
+      startY: 40,
+    });
+
+    doc.save(`shift_${activeShiftIndex + 1}_sales.pdf`);
   };
 
   const handleNextShift = () => {
@@ -203,8 +166,12 @@ const HistoryPage = () => {
     },
   ];
 
-  const currentDay = Object.keys(dailySales)[currentDayIndex];
-  const currentDaySales = dailySales[currentDay] || { sales: [], totalQuantity: 0, totalAmount: 0 };
+  const totalQuantity = filteredHistory.reduce((acc, entry) => {
+    entry.items.forEach(item => acc += item.quantity);
+    return acc;
+  }, 0);
+
+  const totalAmount = filteredHistory.reduce((acc, entry) => acc + entry.total, 0);
   const totalShifts = closingTimestamps.length + 1;
 
   return (
@@ -261,28 +228,15 @@ const HistoryPage = () => {
         )}
 
         <div style={{ marginBottom: '20px' }}>
-          <h3>{currentDay}</h3>
-          <p>Total Items Sold: {currentDaySales.totalQuantity}</p>
-          <p>Total Sales: Rs. {currentDaySales.totalAmount.toFixed(2)}</p>
+          <p><strong>Total Items Sold:</strong> {totalQuantity}</p>
+          <p><strong>Total Sales:</strong> Rs. {totalAmount.toFixed(2)}</p>
 
           <Table
-            dataSource={currentDaySales.sales}
+            dataSource={filteredHistory}
             columns={columns}
             rowKey="_id"
             pagination={{ pageSize: 50 }}
           />
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Button onClick={handlePreviousDay} disabled={currentDayIndex === 0}>
-            Previous Day
-          </Button>
-          <Button
-            onClick={handleNextDay}
-            disabled={currentDayIndex === Object.keys(dailySales).length - 1}
-          >
-            Next Day
-          </Button>
         </div>
       </Card>
     </div>
